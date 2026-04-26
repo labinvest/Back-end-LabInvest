@@ -9,7 +9,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Testando rotas
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', mensagem: 'Servidor está rodando' });
 });
@@ -72,6 +71,15 @@ app.post('/api/users', async (req, res) => {
 
 const agendamentoRoutes = require('./routes/agendamentoRoutes');
 app.use('/api', agendamentoRoutes);
+
+const chatRoutes = require('./routes/chatRoutes');
+app.use('/api', chatRoutes);
+
+const servicoRoutes = require('./routes/servicoRoutes');
+app.use('/api', servicoRoutes);
+
+const postRoutes = require('./routes/postRoutes');
+app.use('/api', postRoutes);
 
 module.exports = app;
 

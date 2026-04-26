@@ -3,19 +3,16 @@ const prisma = require('../lib/prisma');
 
 class AgendamentoService {
         
-//Criar Agendamento
     async criarAgendamento(data) {
         return prisma.agendamento.create({ data });
     }
 
-//Listar Agendamento
-    async listarAgendamento() {
+    async listarAgendamentos() {
         return prisma.agendamento.findMany({
             orderBy: { id: 'asc' },
         });
     }
 
-//Ler Agendamento
     async lerAgendamento(id) {
         return prisma.agendamento.findUnique({ 
             where: { id: parseInt(id) },
@@ -23,7 +20,6 @@ class AgendamentoService {
         });
     }
 
-//Atualizar Agendamento
     async atualizarAgendamento(id, data) {
         return prisma.agendamento.update({
             where: { id: parseInt(id) },
@@ -31,7 +27,6 @@ class AgendamentoService {
         });
     }
 
-//Excluir Agendamento
     async excluirAgendamento(id) {
         return prisma.agendamento.delete({
             where: { id: parseInt(id) },

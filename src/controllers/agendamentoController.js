@@ -2,7 +2,6 @@ const agendamentoService = require('../services/agendamentoService');
 
 class AgendamentoController {
 
-    //Criar Agendamento
     async criarAgendamento(req, res) {
         try {
             const { userId, data } = req.body;
@@ -19,17 +18,15 @@ class AgendamentoController {
 
     }
 
-    //Listar Agendamento
-    async listarAgendamento(req, res) {
+    async listarAgendamentos(req, res) {
         try {
-            const agendamento = await agendamentoService.listarAgendamento();
-            res.json(agendamento);
+            const agendamentos = await agendamentoService.listarAgendamentos();
+            res.json(agendamentos);
         } catch (error) {
             res.status(500).json({ erro: 'Erro ao listar agendamento', detalhe: error.message });
         }
     }
 
-    //Ler Agendamento
     async obterPorId(req, res) {
         try {
             const { id } = req.params;
@@ -43,7 +40,6 @@ class AgendamentoController {
         }
     }
 
-    //Atualizar Agendamento
     async atualizarAgendamento(req, res) {
         try {
             const { id } = req.params;
@@ -56,8 +52,6 @@ class AgendamentoController {
         }
     }
 
-
-    //Excluir Agendamento
     async excluirAgendamento(req, res) {
         try {
             const { id } = req.params;
