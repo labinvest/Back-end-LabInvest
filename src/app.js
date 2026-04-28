@@ -9,14 +9,21 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health Check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', mensagem: 'Servidor está rodando' });
+  res.json({
+    status: 'OK',
+    mensagem: 'Servidor está rodando'
+  });
 });
 
+// LISTAR USUÁRIOS
 app.get('/api/users', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      orderBy: { id: 'asc' },
+      orderBy: {
+        id: 'asc'
+      },
       select: {
         id: true,
         nome: true,
@@ -25,28 +32,53 @@ app.get('/api/users', async (req, res) => {
         endereco: true,
         role: true,
         ativo: true,
-        createdAt: true,
-      },
+        createdAt: true
+      }
     });
 
     res.json(users);
+
   } catch (error) {
-    res.status(500).json({ erro: 'Erro ao listar usuarios', detalhe: error.message });
+    console.log(error);
+
+    res.status(500).json({
+      erro: 'Erro ao listar usuarios',
+      detalhe: error.message
+    });
   }
 });
 
+// CRIAR USUÁRIO
 app.post('/api/users', async (req, res) => {
   try {
-    const { nome, email, senha, telefone, endereco, role, ativo } = req.body;
+    const {
+      nome,
+      email,
+      senha,
+      telefone,
+      endereco,
+      role,
+      ativo
+    } = req.body;
 
     if (!nome || !email || !senha) {
-      return res.status(400).json({ erro: 'nome, email e senha sao obrigatorios' });
+      return res.status(400).json({
+        erro: 'nome, email e senha sao obrigatorios'
+      });
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
 
     const user = await prisma.user.create({
-      data: { nome, email, senha: senhaHash, telefone, endereco, role, ativo },
+      data: {
+        nome,
+        email,
+        senha: senhaHash,
+        telefone,
+        endereco,
+        role,
+        ativo
+      },
       select: {
         id: true,
         nome: true,
@@ -55,20 +87,29 @@ app.post('/api/users', async (req, res) => {
         endereco: true,
         role: true,
         ativo: true,
-        createdAt: true,
-      },
+        createdAt: true
+      }
     });
 
     res.status(201).json(user);
+
   } catch (error) {
+    console.log(error);
+
     if (error.code === 'P2002') {
-      return res.status(409).json({ erro: 'email ja cadastrado' });
+      return res.status(409).json({
+        erro: 'email ja cadastrado'
+      });
     }
 
-    res.status(500).json({ erro: 'Erro ao criar usuario', detalhe: error.message });
+    res.status(500).json({
+      erro: 'Erro ao criar usuario',
+      detalhe: error.message
+    });
   }
 });
 
+// ROTAS EXTRAS
 const agendamentoRoutes = require('./routes/agendamentoRoutes');
 app.use('/api', agendamentoRoutes);
 
@@ -82,4 +123,3 @@ const postRoutes = require('./routes/postRoutes');
 app.use('/api', postRoutes);
 
 module.exports = app;
-

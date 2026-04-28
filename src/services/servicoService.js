@@ -35,4 +35,3 @@ class ServicoService {
 }
 
 module.exports = new ServicoService();
-
