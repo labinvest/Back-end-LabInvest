@@ -3,11 +3,7 @@ const postService = require('../services/postService');
 class PostController {
     async criarPost(req, res) {
         try {
-            const { titulo, conteudo, userId } = req.body;
-            if (!titulo || !conteudo || !userId) {
-                return res.status(400).json({ erro: 'titulo, conteudo e userId são obrigatórios' });
-            }
-            const post = await postService.criarPost({ titulo, conteudo, userId });
+            const post = await postService.criarPost(req.body);
             res.status(201).json(post);
         }
         catch (error) {

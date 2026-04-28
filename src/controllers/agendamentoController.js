@@ -3,20 +3,22 @@ const agendamentoService = require('../services/agendamentoService');
 class AgendamentoController {
 
     async criarAgendamento(req, res) {
-        try {
-            const { userId, data } = req.body;
+    try {
+        const dados = {
+            ...req.body,
+            dataInicio: new Date(req.body.dataInicio)
+        };
 
-            if (!userId || !data) {
-                return res.status(400).json({ erro: 'userId e data sao obrigatorios' });
-            }
+        const agendamento = await agendamentoService.criarAgendamento(dados);
 
-            const agendamento = await agendamentoService.criarAgendamento({ userId, data });
-            res.status(201).json(agendamento);
-        } catch (error) {
-            res.status(500).json({ erro: 'Erro ao criar agendamento', detalhe: error.message });
-        }
-
+        res.status(201).json(agendamento);
+    } catch (error) {
+        res.status(500).json({
+            erro: 'Erro ao criar agendamento',
+            detalhe: error.message
+        });
     }
+}
 
     async listarAgendamentos(req, res) {
         try {

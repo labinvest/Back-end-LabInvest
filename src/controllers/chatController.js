@@ -3,11 +3,7 @@ const chatService = require('../services/chatService');
 class ChatController {
   async criarChat(req, res) {
     try {
-      const { userId, message } = req.body;
-      if (!userId || !message) {
-        return res.status(400).json({ erro: 'userId e message são obrigatórios' });
-      }
-      const chat = await chatService.criarChat({ userId, message });
+      const chat = await chatService.criarChat(req.body);
       res.status(201).json(chat);
     } catch (error) {
       res.status(500).json({ erro: 'Erro ao criar chat', detalhe: error.message });

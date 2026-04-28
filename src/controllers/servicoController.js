@@ -3,12 +3,7 @@ const servicoService = require('../services/servicoService');
 class ServicoController {
     async criarServico(req, res) {
         try {
-            const { nome, descricao, preco } = req.body;
-            if (!nome || !descricao || preco === undefined) {
-                return res.status(400).json({ erro: 'nome, descricao e preco sao obrigatorios' });
-            }
-
-            const servico = await servicoService.criarServico({ nome, descricao, preco });
+            const servico = await servicoService.criarServico(req.body);
             res.status(201).json(servico);
         } catch (error) {
             res.status(500).json({ erro: 'Erro ao criar servico', detalhe: error.message });

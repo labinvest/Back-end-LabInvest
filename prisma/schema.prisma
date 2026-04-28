@@ -61,16 +61,16 @@ model Servico {
 
 model Chat {
   id              Int      @id @default(autoincrement())
-  userId          Int
+  userId          Int?
   especialistaId  Int?
-  assunto         String
-  mensagem        String
+  assunto         String?
+  mensagem        String?
   status          String   @default("aberto")  // aberto, respondido, fechado
   prioridade      String   @default("normal")  // baixa, normal, alta
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user           User  @relation(fields: [userId], references: [id])
+  user           User?  @relation(fields: [userId], references: [id])
   especialista   User? @relation("ChatEspecialista", fields: [especialistaId], references: [id])
 
   @@index([userId])
@@ -79,12 +79,13 @@ model Chat {
 
 model Agendamento {
   id              Int      @id @default(autoincrement())
-  userId          Int
+  userId          Int?
   especialistaId  Int?
   servicoId       Int?
-  titulo          String
+  titulo          String?
   descricao       String?
-  dataInicio      DateTime
+  data            DateTime?
+  dataInicio      DateTime?
   dataFim         DateTime?
   duracao         Int?     // em minutos
   status          String   @default("agendado")  // agendado, confirmado, realizado, cancelado
@@ -93,7 +94,7 @@ model Agendamento {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user           User      @relation(fields: [userId], references: [id])
+  user           User?      @relation(fields: [userId], references: [id])
   especialista   User?     @relation("AgendamentoEspecialista", fields: [especialistaId], references: [id])
   servico        Servico?  @relation(fields: [servicoId], references: [id])
 
@@ -104,12 +105,12 @@ model Agendamento {
 
 model Postagem {
   id        Int      @id @default(autoincrement())
-  userId    Int
-  titulo    String
-  conteudo  String
+  userId    Int?
+  titulo    String?
+  conteudo  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 }
 
