@@ -19,11 +19,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  chats              Chat[]
-  chatsEspecialista  Chat[]              @relation("ChatEspecialista")
+
   agendamentos       Agendamento[]
   agendamentosEspec  Agendamento[]       @relation("AgendamentoEspecialista")
   postagens          Postagem[]
+  avaliacoes         Avaliacao[]
+  notificacoes       Notificacao[]
+  auditoriaLogs      AuditoriaLog[]
 }
 
 model Cliente {
@@ -32,19 +34,64 @@ model Cliente {
   email     String   @unique
   telefone  String?
   endereco  String?
+  cpf       String?  @unique
+  dataNascimento DateTime?
+  genero    String?  // M, F, Outro
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Especialista {
+  id              Int      @id @default(autoincrement())
+  nome            String
+  email           String   @unique
+  telefone        String?
+  endereco        String?
+  formacao        String?
+  categoriaId     Int?
+  bio             String?
+  experiencia     Int?     // anos de experiência
+  avaliacaoMedia  Float?   @default(0)
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  categoria            Categoria?        @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  disponibilidades     Disponibilidade[]
+  avaliacoes           Avaliacao[]
+  servicos             EspecialistaServico[]
+  documentos           Documento[]
+
+  @@index([categoriaId])
+}
+
+model Categoria {
   id        Int      @id @default(autoincrement())
-  nome      String
-  email     String   @unique
-  telefone  String?
-  endereco  String?
-  formacao  String?
+  nome      String   @unique
+  descricao String?
+  icone     String?  // emoji ou URL
+  ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  especialistas Especialista[]
+}
+
+model Disponibilidade {
+  id              Int      @id @default(autoincrement())
+  especialistaId  Int
+  diaSemana       Int      @default(1)     // 0=domingo, 1=segunda, ... 6=sábado
+  horaInicio      String   // "08:00"
+  horaFim         String   // "17:00"
+  intervaloMinutos Int    @default(30)   // intervalo entre agendamentos
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  especialista Especialista @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
+
+  @@unique([especialistaId, diaSemana])
+  @@index([especialistaId])
 }
 
 model Servico {
@@ -52,29 +99,14 @@ model Servico {
   nome      String
   descricao String?
   preco     Float
+  duracao   Int?     // em minutos
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  agendamentos Agendamento[]
-}
-
-model Chat {
-  id              Int      @id @default(autoincrement())
-  userId          Int?
-  especialistaId  Int?
-  assunto         String?
-  mensagem        String?
-  status          String   @default("aberto")  // aberto, respondido, fechado
-  prioridade      String   @default("normal")  // baixa, normal, alta
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  user           User?  @relation(fields: [userId], references: [id])
-  especialista   User? @relation("ChatEspecialista", fields: [especialistaId], references: [id])
-
-  @@index([userId])
-  @@index([especialistaId])
+  agendamentos           Agendamento[]
+  agendamentoServicos    AgendamentoServico[]
+  especialistaServicos   EspecialistaServico[]
 }
 
 model Agendamento {
@@ -91,16 +123,91 @@ model Agendamento {
   status          String   @default("agendado")  // agendado, confirmado, realizado, cancelado
   local           String?
   notas           String?
+  pago            Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user           User?      @relation(fields: [userId], references: [id])
-  especialista   User?     @relation("AgendamentoEspecialista", fields: [especialistaId], references: [id])
-  servico        Servico?  @relation(fields: [servicoId], references: [id])
+  user           User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  especialista   User?     @relation("AgendamentoEspecialista", fields: [especialistaId], references: [id], onDelete: SetNull)
+  servico        Servico?  @relation(fields: [servicoId], references: [id], onDelete: SetNull)
+  pagamento      Pagamento?
+  servicos       AgendamentoServico[]
 
   @@index([userId])
   @@index([especialistaId])
   @@index([servicoId])
+}
+
+
+model Avaliacao {
+  id              Int      @id @default(autoincrement())
+  usuarioId       Int
+  especialistaId  Int?
+  agendamentoId   Int?
+  classificacao   Int      // 1-5 estrelas
+  comentario      String?
+  helpful         Boolean? @default(false) // outros votam se foi útil
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  usuario         User         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  especialista    Especialista? @relation(fields: [especialistaId], references: [id], onDelete: SetNull)
+
+  @@unique([usuarioId, agendamentoId])
+  @@index([especialistaId])
+  @@index([agendamentoId])
+}
+
+model Notificacao {
+  id              Int      @id @default(autoincrement())
+  usuarioId       Int
+  titulo          String
+  mensagem        String
+  tipo            String   // "agendamento", "pagamento", "chat", "avaliacao", "sistema"
+  lido            Boolean  @default(false)
+  link            String?  // URL para ação rápida
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  usuario User @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, lido])
+}
+
+model AuditoriaLog {
+  id              Int      @id @default(autoincrement())
+  usuarioId       Int?
+  acao            String   // "criar", "editar", "deletar", "login", "logout"
+  tabela          String   // qual tabela foi afetada
+  registroId      Int?     // ID do registro afetado
+  dados           String?  // JSON com dados antigos/novos
+  ip              String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+
+  usuario User? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@index([tabela])
+  @@index([createdAt])
+}
+
+model Pagamento {
+  id                Int      @id @default(autoincrement())
+  agendamentoId     Int      @unique
+  valor             Float
+  metodo            String   // "cartao", "pix", "boleto"
+  status            String   @default("pendente") // "pendente", "pago", "cancelado"
+  dataVencimento    DateTime?
+  dataPagamento     DateTime?
+  numeroTransacao   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  agendamento       Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([agendamentoId])
 }
 
 model Postagem {
@@ -111,6 +218,67 @@ model Postagem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User? @relation(fields: [userId], references: [id])
+  user       User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model TipoDocumento {
+  id          Int      @id @default(autoincrement())
+  nome        String   @unique
+  descricao   String?
+  obrigatorio Boolean  @default(false)
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documentos Documento[]
+}
+
+model Documento {
+  id                    Int      @id @default(autoincrement())
+  caminhoArquivo       String
+  nomeArquivo          String
+  dataEnvio            DateTime @default(now())
+  statusValidacao      String   @default("pendente") // pendente, aprovado, rejeitado
+  observacao           String?
+  especialistaId       Int
+  tipoDocumentoId      Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  especialista         Especialista @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
+  tipoDocumento        TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Cascade)
+
+  @@index([especialistaId])
+  @@index([tipoDocumentoId])
+  @@index([statusValidacao])
+}
+
+model EspecialistaServico {
+  id              Int      @id @default(autoincrement())
+  especialistaId  Int
+  servicoId       Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  especialista    Especialista @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
+  servico         Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+
+  @@unique([especialistaId, servicoId])
+  @@index([servicoId])
+}
+
+model AgendamentoServico {
+  id              Int      @id @default(autoincrement())
+  agendamentoId   Int
+  servicoId       Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  agendamento     Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+  servico         Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+
+  @@unique([agendamentoId, servicoId])
+  @@index([servicoId])
+}
+
 

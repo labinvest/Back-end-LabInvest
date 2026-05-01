@@ -18,18 +18,31 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ROTAS EXTRAS
+// ROTAS
+const authRoutes = require('./routes/authRoutes');
+app.use('/api', authRoutes);
+
+const debugRoutes = require('./routes/debugRoutes');
+app.use('/api', debugRoutes);
+
+const adminRoutes = require('./routes/adminRoutes');
+app.use('/api', adminRoutes);
+
 const agendamentoRoutes = require('./routes/agendamentoRoutes');
 app.use('/api', agendamentoRoutes);
-
-const chatRoutes = require('./routes/chatRoutes');
-app.use('/api', chatRoutes);
 
 const servicoRoutes = require('./routes/servicoRoutes');
 app.use('/api', servicoRoutes);
 
 const postRoutes = require('./routes/postRoutes');
 app.use('/api', postRoutes);
+
+
+const especialistaServicoRoutes = require('./routes/especialistaServicoRoutes');
+app.use('/api/especialista-servico', especialistaServicoRoutes);
+
+const agendamentoServicoRoutes = require('./routes/agendamentoServicoRoutes');
+app.use('/api/agendamento-servico', agendamentoServicoRoutes);
 
 // Swagger definition
 const swaggerOptions = {
