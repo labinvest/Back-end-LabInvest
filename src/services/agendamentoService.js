@@ -7,14 +7,24 @@ function removerDadosSensiveis(usuario) {
     return usuarioSeguro;
 }
 
+// Função auxiliar para remover campos nulos do objeto
+function removerNulos(obj) {
+    if (!obj) return null;
+    return Object.fromEntries(
+        Object.entries(obj).filter(([_, value]) => value !== null)
+    );
+}
+
 // Função auxiliar para limpar resposta de agendamento
 function limparAgendamento(agendamento) {
     if (!agendamento) return null;
-    return {
+    const agendamentoLimpo = {
         ...agendamento,
         user: removerDadosSensiveis(agendamento.user),
-        especialista: removerDadosSensiveis(agendamento.especialista)
+        especialista: removerDadosSensiveis(agendamento.especialista),
+        servico: agendamento.servico
     };
+    return removerNulos(agendamentoLimpo);
 }
 
 class AgendamentoService {

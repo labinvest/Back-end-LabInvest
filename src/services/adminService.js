@@ -29,6 +29,7 @@ const adminService = {
           id: true,
           nome: true,
           email: true,
+          senha: true,
           role: true,
           telefone: true,
           ativo: true,

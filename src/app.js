@@ -22,9 +22,6 @@ app.get('/api/health', (req, res) => {
 const authRoutes = require('./routes/authRoutes');
 app.use('/api', authRoutes);
 
-const debugRoutes = require('./routes/debugRoutes');
-app.use('/api', debugRoutes);
-
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api', adminRoutes);
 

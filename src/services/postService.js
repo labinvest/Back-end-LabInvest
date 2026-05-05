@@ -4,14 +4,38 @@ class PostService {
     async criarPost(data) {
         return prisma.postagem.create({
             data,
-            include: { user: true },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        nome: true,
+                        email: true,
+                        role: true,
+                        ativo: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    }
+                }
+            },
         });
     }
 
     async listarPosts() {
         return prisma.postagem.findMany({
             orderBy: { id: 'asc' },
-            include: { user: true },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        nome: true,
+                        email: true,
+                        role: true,
+                        ativo: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    }
+                }
+            },
         });
     }
     async deletarPost(id) {
@@ -23,13 +47,37 @@ class PostService {
         return prisma.postagem.update({
             where: { id: parseInt(id, 10) },
             data,
-            include: { user: true },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        nome: true,
+                        email: true,
+                        role: true,
+                        ativo: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    }
+                }
+            },
         });
     }
     async lerPost(id) {
         return prisma.postagem.findUnique({
             where: { id: parseInt(id, 10) },
-            include: { user: true },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        nome: true,
+                        email: true,
+                        role: true,
+                        ativo: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    }
+                }
+            },
         });
     }
 }
