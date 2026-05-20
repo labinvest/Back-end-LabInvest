@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,278 +6,311 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  ADMIN
+  CLIENTE
+  VOLUNTARIO
+}
+
+enum StatusAgendamento {
+  AGENDADO
+  CONFIRMADO
+  REALIZADO
+  CANCELADO
+}
+
+enum StatusPagamento {
+  PENDENTE
+  PAGO
+  CANCELADO
+}
+
+enum StatusDocumento {
+  PENDENTE
+  APROVADO
+  REJEITADO
+}
+
+enum TipoNotificacao {
+  AGENDAMENTO
+  PAGAMENTO
+  CHAT
+  AVALIACAO
+  SISTEMA
+}
 model User {
-  id        Int      @id @default(autoincrement())
-  nome      String
-  email     String   @unique
-  senha     String
-  telefone  String?
-  endereco  String?
-  role      String   @default("user")
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+  id          Int      @id @default(autoincrement())
 
-  agendamentos       Agendamento[]
-  agendamentosEspec  Agendamento[]       @relation("AgendamentoEspecialista")
-  postagens          Postagem[]
-  avaliacoes         Avaliacao[]
-  notificacoes       Notificacao[]
-  auditoriaLogs      AuditoriaLog[]
+  email       String   @unique
+  senha       String
+  role        Role     @default(CLIENTE)
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  perfil Perfil?
 }
 
-model Cliente {
-  id        Int      @id @default(autoincrement())
-  nome      String
-  email     String   @unique
-  telefone  String?
-  endereco  String?
-  cpf       String?  @unique
-  dataNascimento DateTime?
-  genero    String?  // M, F, Outro
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Perfil {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  nome        String
+  telefone    String?
+  endereco    String?
+  cpf         String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voluntario Voluntario?
+
+  // AGENDAMENTOS
+  agendamentosCliente Agendamento[]
+  agendamentosVoluntario Agendamento[] @relation("AgendamentoVoluntario")
+
+  // AVALIAÇÕES
+  avaliacoes Avaliacao[]
 }
 
-model Especialista {
+model Voluntario {
   id              Int      @id @default(autoincrement())
-  nome            String
-  email           String   @unique
-  telefone        String?
-  endereco        String?
-  formacao        String?
+  perfilId        Int      @unique
   categoriaId     Int?
+  formacao        String?
   bio             String?
-  experiencia     Int?     // anos de experiência
-  avaliacaoMedia  Float?   @default(0)
+  experiencia     Int?
+  avaliacaoMedia  Float    @default(0)
   ativo           Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  categoria            Categoria?        @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
-  disponibilidades     Disponibilidade[]
-  avaliacoes           Avaliacao[]
-  servicos             EspecialistaServico[]
-  documentos           Documento[]
+  perfil Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+
+  categoria Categoria? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+
+  disponibilidades Disponibilidade[]
+
+  documentos Documento[]
+
+  servicos VoluntarioServico[]
+  postagens Postagem[]
+  avaliacoesRecebidas Avaliacao[]
 
   @@index([categoriaId])
 }
 
 model Categoria {
-  id        Int      @id @default(autoincrement())
-  nome      String   @unique
-  descricao String?
-  icone     String?  // emoji ou URL
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
 
-  especialistas Especialista[]
+  nome        String   @unique
+  descricao   String?
+
+  ativo       Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  voluntarios Voluntario[]
 }
 
 model Disponibilidade {
-  id              Int      @id @default(autoincrement())
-  especialistaId  Int
-  diaSemana       Int      @default(1)     // 0=domingo, 1=segunda, ... 6=sábado
-  horaInicio      String   // "08:00"
-  horaFim         String   // "17:00"
-  intervaloMinutos Int    @default(30)   // intervalo entre agendamentos
-  ativo           Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  Int      @id @default(autoincrement())
 
-  especialista Especialista @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
+  voluntarioId        Int
 
-  @@unique([especialistaId, diaSemana])
-  @@index([especialistaId])
+  diaSemana           Int
+
+  horaInicio          String
+  horaFim             String
+
+  intervaloMinutos    Int      @default(30)
+
+  ativo               Boolean  @default(true)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  voluntario Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+
+  @@unique([voluntarioId, diaSemana])
 }
 
 model Servico {
-  id        Int      @id @default(autoincrement())
-  nome      String
-  descricao String?
-  preco     Float
-  duracao   Int?     // em minutos
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  agendamentos           Agendamento[]
-  agendamentoServicos    AgendamentoServico[]
-  especialistaServicos   EspecialistaServico[]
+  id              Int      @id @default(autoincrement())
+
+  nome            String
+  descricao       String?
+
+  preco           Float
+  duracao         Int?
+
+  ativo           Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  agendamentos Agendamento[]
+
+  voluntarios VoluntarioServico[]
+
+  agendamentoServicos AgendamentoServico[]
 }
 
 model Agendamento {
-  id              Int      @id @default(autoincrement())
-  userId          Int?
-  especialistaId  Int?
-  servicoId       Int?
-  titulo          String?
-  descricao       String?
-  data            DateTime?
-  dataInicio      DateTime?
-  dataFim         DateTime?
-  duracao         Int?     // em minutos
-  status          String   @default("agendado")  // agendado, confirmado, realizado, cancelado
-  local           String?
-  notas           String?
-  pago            Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    Int      @id @default(autoincrement())
 
-  user           User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  especialista   User?     @relation("AgendamentoEspecialista", fields: [especialistaId], references: [id], onDelete: SetNull)
-  servico        Servico?  @relation(fields: [servicoId], references: [id], onDelete: SetNull)
-  pagamento      Pagamento?
-  servicos       AgendamentoServico[]
+  clientePerfilId       Int
+  voluntarioPerfilId    Int
 
-  @@index([userId])
-  @@index([especialistaId])
+  servicoId             Int?
+
+  titulo                String?
+  descricao             String?
+
+  dataInicio            DateTime
+  dataFim               DateTime?
+
+  status                StatusAgendamento @default(AGENDADO)
+
+  local                 String?
+  notas                 String?
+
+  pago                  Boolean  @default(false)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  cliente Perfil @relation(fields: [clientePerfilId], references: [id], onDelete: Cascade)
+
+  voluntario Perfil @relation("AgendamentoVoluntario", fields: [voluntarioPerfilId], references: [id], onDelete: Cascade)
+
+  servico Servico? @relation(fields: [servicoId], references: [id], onDelete: SetNull)
+
+  pagamento Pagamento?
+
+  servicos AgendamentoServico[]
+
+  @@index([clientePerfilId])
+  @@index([voluntarioPerfilId])
   @@index([servicoId])
 }
 
-
 model Avaliacao {
-  id              Int      @id @default(autoincrement())
-  usuarioId       Int
-  especialistaId  Int?
-  agendamentoId   Int?
-  classificacao   Int      // 1-5 estrelas
-  comentario      String?
-  helpful         Boolean? @default(false) // outros votam se foi útil
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
 
-  usuario         User         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  especialista    Especialista? @relation(fields: [especialistaId], references: [id], onDelete: SetNull)
+  perfilId          Int
+  voluntarioId      Int?
 
-  @@unique([usuarioId, agendamentoId])
-  @@index([especialistaId])
-  @@index([agendamentoId])
-}
+  agendamentoId     Int?
 
-model Notificacao {
-  id              Int      @id @default(autoincrement())
-  usuarioId       Int
-  titulo          String
-  mensagem        String
-  tipo            String   // "agendamento", "pagamento", "chat", "avaliacao", "sistema"
-  lido            Boolean  @default(false)
-  link            String?  // URL para ação rápida
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  classificacao     Int
+  comentario        String?
 
-  usuario User @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  @@index([usuarioId, lido])
-}
+  perfil Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
 
-model AuditoriaLog {
-  id              Int      @id @default(autoincrement())
-  usuarioId       Int?
-  acao            String   // "criar", "editar", "deletar", "login", "logout"
-  tabela          String   // qual tabela foi afetada
-  registroId      Int?     // ID do registro afetado
-  dados           String?  // JSON com dados antigos/novos
-  ip              String?
-  userAgent       String?
-  createdAt       DateTime @default(now())
+  voluntario Voluntario? @relation(fields: [voluntarioId], references: [id], onDelete: SetNull)
 
-  usuario User? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  @@unique([perfilId, agendamentoId])
 
-  @@index([usuarioId])
-  @@index([tabela])
-  @@index([createdAt])
+  @@index([voluntarioId])
 }
 
 model Pagamento {
   id                Int      @id @default(autoincrement())
+
   agendamentoId     Int      @unique
+
   valor             Float
-  metodo            String   // "cartao", "pix", "boleto"
-  status            String   @default("pendente") // "pendente", "pago", "cancelado"
-  dataVencimento    DateTime?
-  dataPagamento     DateTime?
-  numeroTransacao   String?
+
+  metodo            String
+
+  status            StatusPagamento @default(PENDENTE)
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  agendamento       Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
-
-  @@index([status])
-  @@index([agendamentoId])
+  agendamento Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
 }
 
 model Postagem {
-  id        Int      @id @default(autoincrement())
-  userId    Int?
-  titulo    String?
-  conteudo  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
 
-  user       User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voluntarioId      Int
+
+  titulo            String
+  conteudo          String
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  voluntario Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+}
+
+
+model Documento {
+  id                  Int      @id @default(autoincrement())
+
+  voluntarioId        Int
+  tipoDocumentoId     Int
+
+  caminhoArquivo      String
+  nomeArquivo         String
+
+  statusValidacao     StatusDocumento @default(PENDENTE)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  voluntario Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+
+  tipoDocumento TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Cascade)
 }
 
 model TipoDocumento {
-  id          Int      @id @default(autoincrement())
-  nome        String   @unique
-  descricao   String?
-  obrigatorio Boolean  @default(false)
-  ativo       Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+
+  nome            String   @unique
+
+  obrigatorio     Boolean  @default(false)
+
+  ativo           Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   documentos Documento[]
 }
 
-model Documento {
-  id                    Int      @id @default(autoincrement())
-  caminhoArquivo       String
-  nomeArquivo          String
-  dataEnvio            DateTime @default(now())
-  statusValidacao      String   @default("pendente") // pendente, aprovado, rejeitado
-  observacao           String?
-  especialistaId       Int
-  tipoDocumentoId      Int
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  especialista         Especialista @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
-  tipoDocumento        TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Cascade)
-
-  @@index([especialistaId])
-  @@index([tipoDocumentoId])
-  @@index([statusValidacao])
-}
-
-model EspecialistaServico {
+model VoluntarioServico {
   id              Int      @id @default(autoincrement())
-  especialistaId  Int
+
+  voluntarioId    Int
   servicoId       Int
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  especialista    Especialista @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
-  servico         Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+  voluntario Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
 
-  @@unique([especialistaId, servicoId])
-  @@index([servicoId])
+  servico Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+
+  @@unique([voluntarioId, servicoId])
 }
 
 model AgendamentoServico {
   id              Int      @id @default(autoincrement())
+
   agendamentoId   Int
   servicoId       Int
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  agendamento     Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
-  servico         Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+  agendamento Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+
+  servico Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
 
   @@unique([agendamentoId, servicoId])
-  @@index([servicoId])
 }
-
-

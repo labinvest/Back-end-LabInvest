@@ -1,17 +1,13 @@
 const prisma = require('../lib/prisma');
-const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 
-// Armazenar tokens ativos em memória (em produção, usar banco de dados)
-const tokensAtivos = new Map();
+// Use uma chave via env em producao; fallback apenas para desenvolvimento local.
+const DEFAULT_JWT_SECRET = 'dev-secret';
+const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
-// Gerar token simples
-function gerarToken() {
-  return crypto.randomBytes(32).toString('hex');
-}
-
-// Armazenar informações do token
-function armazenarToken(token, userId, role = 'user') {
-  tokensAtivos.set(token, { id: userId, role });
+function gerarToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 const authService = {
@@ -84,8 +80,7 @@ const authService = {
       }
 
       // Gerar token
-      const token = gerarToken();
-      armazenarToken(token, usuario.id, usuario.role);
+      const token = gerarToken({ id: usuario.id, role: usuario.role });
 
       return {
         usuario: {
@@ -134,8 +129,7 @@ const authService = {
     }
 
     // Gerar token
-    const token = gerarToken();
-    armazenarToken(token, usuario.id, usuario.role);
+    const token = gerarToken({ id: usuario.id, role: usuario.role });
 
     return {
       usuario: {
@@ -152,15 +146,15 @@ const authService = {
 
   // Validar token
   validarToken(token) {
-    if (!tokensAtivos.has(token)) {
+    try {
+      return jwt.verify(token, JWT_SECRET);
+    } catch (error) {
       throw new Error('Token inválido');
     }
-    return tokensAtivos.get(token);
   },
 
   // Logout
-  logout(token) {
-    tokensAtivos.delete(token);
+  logout() {
     return { mensagem: 'Logout realizado com sucesso' };
   },
 
