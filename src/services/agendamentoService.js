@@ -1,99 +1,131 @@
 const prisma = require('../lib/prisma');
 
-// Função auxiliar para remover dados sensíveis do usuário
-function removerDadosSensiveis(usuario) {
-    if (!usuario) return null;
-    const { senha, ...usuarioSeguro } = usuario;
-    return usuarioSeguro;
-}
-
-// Função auxiliar para remover campos nulos do objeto
-function removerNulos(obj) {
-    if (!obj) return null;
-    return Object.fromEntries(
-        Object.entries(obj).filter(([_, value]) => value !== null)
-    );
-}
-
-// Função auxiliar para limpar resposta de agendamento
-function limparAgendamento(agendamento) {
-    if (!agendamento) return null;
-    const agendamentoLimpo = {
-        ...agendamento,
-        user: removerDadosSensiveis(agendamento.user),
-        especialista: removerDadosSensiveis(agendamento.especialista),
-        servico: agendamento.servico
-    };
-    return removerNulos(agendamentoLimpo);
-}
+const includeCompleto = {
+  cliente: { select: { id: true, nome: true, telefone: true } },
+  voluntario: { select: { id: true, nome: true } },
+  servico: { select: { id: true, nome: true, preco: true, duracao: true } },
+  servicos: {
+    include: { servico: { select: { id: true, nome: true, preco: true } } },
+  },
+};
 
 class AgendamentoService {
-        
-    async criarAgendamento(agendamentoData) {
-        // Se não tiver 'data', usar 'dataInicio' como fallback
-        const dadosProcessados = {
-            ...agendamentoData,
-            data: agendamentoData.data || agendamentoData.dataInicio || new Date()
-        };
+  async criarAgendamento(dados) {
+    const {
+      clientePerfilId,
+      voluntarioPerfilId,
+      servicoId,
+      titulo,
+      descricao,
+      dataInicio,
+      dataFim,
+      local,
+      notas,
+    } = dados;
 
-        const agendamento = await prisma.agendamento.create({ 
-            data: dadosProcessados,
-            include: {
-                user: true,
-                especialista: true,
-                servico: true
-            }
-        });
-
-        return limparAgendamento(agendamento);
+    if (!clientePerfilId || !voluntarioPerfilId || !dataInicio) {
+      throw new Error('clientePerfilId, voluntarioPerfilId e dataInicio são obrigatórios');
     }
 
-    async listarAgendamentos() {
-        const agendamentos = await prisma.agendamento.findMany({
-            include: {
-                user: true,
-                especialista: true,
-                servico: true
-            },
-            orderBy: { id: 'asc' },
-        });
+    return prisma.agendamento.create({
+      data: {
+        clientePerfilId: parseInt(clientePerfilId),
+        voluntarioPerfilId: parseInt(voluntarioPerfilId),
+        servicoId: servicoId ? parseInt(servicoId) : null,
+        titulo: titulo || null,
+        descricao: descricao || null,
+        dataInicio: new Date(dataInicio),
+        dataFim: dataFim ? new Date(dataFim) : null,
+        local: local || null,
+        notas: notas || null,
+        status: 'AGENDADO',
+      },
+      include: includeCompleto,
+    });
+  }
 
-        return agendamentos.map(agendamento => limparAgendamento(agendamento));
+  async listarAgendamentos(filtros = {}) {
+    const { clientePerfilId, voluntarioPerfilId, status, page = 1, limit = 20 } = filtros;
+    const skip = (page - 1) * limit;
+
+    const where = {};
+    if (clientePerfilId) where.clientePerfilId = parseInt(clientePerfilId);
+    if (voluntarioPerfilId) where.voluntarioPerfilId = parseInt(voluntarioPerfilId);
+    if (status) where.status = status.toUpperCase();
+
+    const [agendamentos, total] = await Promise.all([
+      prisma.agendamento.findMany({
+        where,
+        skip,
+        take: limit,
+        include: includeCompleto,
+        orderBy: { dataInicio: 'desc' },
+      }),
+      prisma.agendamento.count({ where }),
+    ]);
+
+    return {
+      agendamentos,
+      paginacao: { total, pagina: page, limite: limit, totalPaginas: Math.ceil(total / limit) },
+    };
+  }
+
+  async lerAgendamento(id) {
+    const agendamento = await prisma.agendamento.findUnique({
+      where: { id: parseInt(id) },
+      include: includeCompleto,
+    });
+
+    if (!agendamento) throw new Error('Agendamento não encontrado');
+    return agendamento;
+  }
+
+  async atualizarAgendamento(id, dados) {
+    const agendamento = await prisma.agendamento.findUnique({ where: { id: parseInt(id) } });
+    if (!agendamento) throw new Error('Agendamento não encontrado');
+
+    const { titulo, descricao, dataInicio, dataFim, local, notas, status } = dados;
+
+    return prisma.agendamento.update({
+      where: { id: parseInt(id) },
+      data: {
+        titulo: titulo !== undefined ? titulo : undefined,
+        descricao: descricao !== undefined ? descricao : undefined,
+        dataInicio: dataInicio ? new Date(dataInicio) : undefined,
+        dataFim: dataFim !== undefined ? (dataFim ? new Date(dataFim) : null) : undefined,
+        local: local !== undefined ? local : undefined,
+        notas: notas !== undefined ? notas : undefined,
+        status: status ? status.toUpperCase() : undefined,
+      },
+      include: includeCompleto,
+    });
+  }
+
+  async atualizarStatus(id, status) {
+    const statusValidos = ['AGENDADO', 'CONFIRMADO', 'REALIZADO', 'CANCELADO'];
+    const statusUpper = status?.toUpperCase();
+
+    if (!statusValidos.includes(statusUpper)) {
+      throw new Error(`Status inválido. Use: ${statusValidos.join(', ')}`);
     }
 
-    async lerAgendamento(id) {
-        const agendamento = await prisma.agendamento.findUnique({ 
-            where: { id: parseInt(id) },
-            include: { 
-                user: true,
-                especialista: true,
-                servico: true
-            }
-        });
+    const agendamento = await prisma.agendamento.findUnique({ where: { id: parseInt(id) } });
+    if (!agendamento) throw new Error('Agendamento não encontrado');
 
-        return limparAgendamento(agendamento);
-    }
+    return prisma.agendamento.update({
+      where: { id: parseInt(id) },
+      data: { status: statusUpper },
+      include: includeCompleto,
+    });
+  }
 
-    async atualizarAgendamento(id, agendamentoData) {
-        const agendamento = await prisma.agendamento.update({
-            where: { id: parseInt(id) },
-            data: agendamentoData,
-            include: {
-                user: true,
-                especialista: true,
-                servico: true
-            }
-        });
+  async excluirAgendamento(id) {
+    const agendamento = await prisma.agendamento.findUnique({ where: { id: parseInt(id) } });
+    if (!agendamento) throw new Error('Agendamento não encontrado');
 
-        return limparAgendamento(agendamento);
-    }
-
-    async excluirAgendamento(id) {
-        return prisma.agendamento.delete({
-            where: { id: parseInt(id) },
-        });
-    }
-
+    await prisma.agendamento.delete({ where: { id: parseInt(id) } });
+    return { mensagem: 'Agendamento excluído com sucesso' };
+  }
 }
 
 module.exports = new AgendamentoService();

@@ -1,59 +1,97 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const prisma = require('./lib/prisma');
 
 const app = express();
-  const swaggerUi = require('swagger-ui-express');
-   const swaggerJSDoc = require('swagger-jsdoc');
+
+const swaggerUi = require('swagger-ui-express');
+const swaggerJSDoc = require('swagger-jsdoc');
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health Check
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    mensagem: 'Servidor está rodando'
-  });
+  res.json({ status: 'OK', mensagem: 'Servidor está rodando', timestamp: new Date().toISOString() });
 });
 
+// ============================================
 // ROTAS
+// ============================================
+
+// Autenticação
 const authRoutes = require('./routes/authRoutes');
 app.use('/api', authRoutes);
 
-const adminRoutes = require('./routes/adminRoutes');
-app.use('/api', adminRoutes);
+// Perfil
+const perfilRoutes = require('./routes/perfilRoutes');
+app.use('/api', perfilRoutes);
 
-const agendamentoRoutes = require('./routes/agendamentoRoutes');
-app.use('/api', agendamentoRoutes);
+// Voluntários
+const voluntarioRoutes = require('./routes/voluntarioRoutes');
+app.use('/api', voluntarioRoutes);
 
+// Categorias
+const categoriaRoutes = require('./routes/categoriaRoutes');
+app.use('/api', categoriaRoutes);
+
+// Disponibilidades
+const disponibilidadeRoutes = require('./routes/disponibilidadeRoutes');
+app.use('/api', disponibilidadeRoutes);
+
+// Serviços
 const servicoRoutes = require('./routes/servicoRoutes');
 app.use('/api', servicoRoutes);
 
+// Agendamentos
+const agendamentoRoutes = require('./routes/agendamentoRoutes');
+app.use('/api', agendamentoRoutes);
+
+// Avaliações
+const avaliacaoRoutes = require('./routes/avaliacaoRoutes');
+app.use('/api', avaliacaoRoutes);
+
+// Documentos e Tipos de Documento
+const documentoRoutes = require('./routes/documentoRoutes');
+app.use('/api', documentoRoutes);
+
+// Postagens
 const postRoutes = require('./routes/postRoutes');
 app.use('/api', postRoutes);
 
+// Notificações
+const notificacaoRoutes = require('./routes/notificacaoRoutes');
+app.use('/api', notificacaoRoutes);
 
-const especialistaServicoRoutes = require('./routes/especialistaServicoRoutes');
-app.use('/api/especialista-servico', especialistaServicoRoutes);
+// Voluntário-Serviço (associação N:N)
+const voluntarioServicoRoutes = require('./routes/voluntarioServicoRoutes');
+app.use('/api/voluntario-servico', voluntarioServicoRoutes);
 
+// Agendamento-Serviço (associação N:N)
 const agendamentoServicoRoutes = require('./routes/agendamentoServicoRoutes');
 app.use('/api/agendamento-servico', agendamentoServicoRoutes);
 
-// Swagger definition
+// Admin
+const adminRoutes = require('./routes/adminRoutes');
+app.use('/api', adminRoutes);
+
+// ============================================
+// SWAGGER
+// ============================================
+
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Lab Invest API',
-      version: '1.0.0',
-      description: 'API documentation for Lab Invest',
+      title: 'LabInvest API',
+      version: '2.0.0',
+      description: 'API do sistema LabInvest — plataforma de voluntariado',
     },
     servers: [
       {
         url: `http://localhost:${process.env.PORT || 3000}`,
-        description: 'Development Server',
+        description: 'Servidor de desenvolvimento',
       },
     ],
     components: {
@@ -71,5 +109,14 @@ const swaggerOptions = {
 
 const swaggerDocs = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
+// ============================================
+// TRATAMENTO GLOBAL DE ERROS
+// ============================================
+
+app.use((err, req, res, next) => {
+  console.error('Erro não tratado:', err);
+  res.status(500).json({ sucesso: false, erro: 'Erro interno do servidor' });
+});
 
 module.exports = app;

@@ -1,7 +1,7 @@
 const prisma = require('../lib/prisma');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// Use uma chave via env em producao; fallback apenas para desenvolvimento local.
 const DEFAULT_JWT_SECRET = 'dev-secret';
 const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
@@ -11,136 +11,128 @@ function gerarToken(payload) {
 }
 
 const authService = {
-  // Criar novo usuário (Signup)
+  // Criar novo usuário (Signup) — cria User + Perfil atomicamente
   async signup(dados) {
-    const { nome, email, senha, telefone, endereco, role, formacao } = dados;
+    const { nome, email, senha, telefone, endereco, cpf, role } = dados;
 
-    // Validar dados obrigatórios
     if (!nome || !email || !senha) {
       throw new Error('Nome, email e senha são obrigatórios');
     }
 
-    // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       throw new Error('Email inválido');
     }
 
-    // Verificar se usuário já existe (em ambas as tabelas)
-    const usuarioExistente = await prisma.user.findUnique({
-      where: { email }
-    });
+    // Roles válidas conforme enum do schema
+    const rolesValidas = ['CLIENTE', 'VOLUNTARIO', 'ADMIN'];
+    const roleDefinida = (role || 'CLIENTE').toUpperCase();
 
-    if (usuarioExistente) {
-      throw new Error('Email já cadastrado');
-    }
-
-    // Validar role
-    const rolesValidas = ['user', 'cliente', 'especialista', 'admin'];
-    const roleDefinida = role || 'user';
-    
     if (!rolesValidas.includes(roleDefinida)) {
       throw new Error(`Role inválida. Use: ${rolesValidas.join(', ')}`);
     }
 
-    try {
-      // Criar usuário na tabela User
-      const usuario = await prisma.user.create({
+    const usuarioExistente = await prisma.user.findUnique({ where: { email } });
+    if (usuarioExistente) {
+      throw new Error('Email já cadastrado');
+    }
+
+    if (cpf) {
+      const cpfExistente = await prisma.perfil.findUnique({ where: { cpf } });
+      if (cpfExistente) {
+        throw new Error('CPF já cadastrado');
+      }
+    }
+
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    // Criar User + Perfil dentro de uma transaction
+    const resultado = await prisma.$transaction(async (tx) => {
+      const usuario = await tx.user.create({
         data: {
-          nome,
           email,
-          senha,
-          telefone: telefone || null,
-          endereco: endereco || null,
+          senha: senhaHash,
           role: roleDefinida,
-          ativo: true
-        }
+          ativo: true,
+          perfil: {
+            create: {
+              nome,
+              telefone: telefone || null,
+              endereco: endereco || null,
+              cpf: cpf || null,
+            },
+          },
+        },
+        include: {
+          perfil: true,
+        },
       });
 
-      // Criar registro na tabela específica conforme a role
-      if (roleDefinida === 'cliente') {
-        await prisma.cliente.create({
-          data: {
-            nome,
-            email,
-            telefone: telefone || null,
-            endereco: endereco || null
-          }
-        });
-      } else if (roleDefinida === 'especialista') {
-        await prisma.especialista.create({
-          data: {
-            nome,
-            email,
-            telefone: telefone || null,
-            endereco: endereco || null,
-            formacao: formacao || null
-          }
-        });
-      }
+      return usuario;
+    });
 
-      // Gerar token
-      const token = gerarToken({ id: usuario.id, role: usuario.role });
+    const token = gerarToken({ id: resultado.id, role: resultado.role, perfilId: resultado.perfil?.id });
 
-      return {
-        usuario: {
-          id: usuario.id,
-          nome: usuario.nome,
-          email: usuario.email,
-          role: usuario.role,
-          telefone: usuario.telefone,
-          endereco: usuario.endereco,
-          ...(roleDefinida === 'especialista' && { formacao })
+    return {
+      usuario: {
+        id: resultado.id,
+        email: resultado.email,
+        role: resultado.role,
+        ativo: resultado.ativo,
+        perfil: {
+          id: resultado.perfil?.id,
+          nome: resultado.perfil?.nome,
+          telefone: resultado.perfil?.telefone,
+          endereco: resultado.perfil?.endereco,
         },
-        token,
-        mensagem: `${roleDefinida === 'cliente' ? 'Cliente' : roleDefinida === 'especialista' ? 'Especialista' : 'Usuário'} criado com sucesso!`
-      };
-    } catch (error) {
-      // Se houver erro ao criar nas tabelas específicas, tentar deletar o User criado
-      if (error.code !== 'P2002') { // P2002 é erro de unique constraint
-        await prisma.user.deleteMany({
-          where: { email }
-        }).catch(() => {
-          // Silenciar erro se não conseguir deletar
-        });
-      }
-      throw error;
-    }
+      },
+      token,
+      mensagem: 'Usuário criado com sucesso',
+    };
   },
 
   // Login de usuário
   async login(email, senha) {
-    // Validar dados obrigatórios
     if (!email || !senha) {
       throw new Error('Email e senha são obrigatórios');
     }
 
-    // Buscar usuário
     const usuario = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
+      include: { perfil: true },
     });
 
-    if (!usuario || usuario.senha !== senha) {
+    if (!usuario) {
       throw new Error('Usuário ou senha incorretos');
     }
 
     if (!usuario.ativo) {
-      throw new Error('Usuário inativo');
+      throw new Error('Usuário inativo. Entre em contato com o suporte.');
     }
 
-    // Gerar token
-    const token = gerarToken({ id: usuario.id, role: usuario.role });
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+    if (!senhaValida) {
+      throw new Error('Usuário ou senha incorretos');
+    }
+
+    const token = gerarToken({ id: usuario.id, role: usuario.role, perfilId: usuario.perfil?.id });
 
     return {
       usuario: {
         id: usuario.id,
-        nome: usuario.nome,
         email: usuario.email,
         role: usuario.role,
-        telefone: usuario.telefone,
-        endereco: usuario.endereco
+        ativo: usuario.ativo,
+        perfil: usuario.perfil
+          ? {
+              id: usuario.perfil.id,
+              nome: usuario.perfil.nome,
+              telefone: usuario.perfil.telefone,
+              endereco: usuario.perfil.endereco,
+            }
+          : null,
       },
-      token
+      token,
     };
   },
 
@@ -153,25 +145,33 @@ const authService = {
     }
   },
 
-  // Logout
+  // Logout (stateless — client descarta o token)
   logout() {
     return { mensagem: 'Logout realizado com sucesso' };
   },
 
-  // Obter dados do usuário logado
+  // Obter dados do usuário logado (com perfil)
   async obterPerfil(userId) {
     const usuario = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
-        nome: true,
         email: true,
         role: true,
-        telefone: true,
-        endereco: true,
         ativo: true,
-        createdAt: true
-      }
+        createdAt: true,
+        perfil: {
+          select: {
+            id: true,
+            nome: true,
+            telefone: true,
+            endereco: true,
+            cpf: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
     });
 
     if (!usuario) {
@@ -185,24 +185,30 @@ const authService = {
   async atualizarPerfil(userId, dados) {
     const { nome, telefone, endereco } = dados;
 
-    const usuario = await prisma.user.update({
+    const usuario = await prisma.user.findUnique({
       where: { id: userId },
-      data: {
-        nome: nome || undefined,
-        telefone: telefone || undefined,
-        endereco: endereco || undefined
-      },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
-        telefone: true,
-        endereco: true
-      }
+      include: { perfil: true },
     });
 
-    return usuario;
+    if (!usuario) throw new Error('Usuário não encontrado');
+
+    // Upsert no perfil
+    const perfilAtualizado = await prisma.perfil.upsert({
+      where: { userId },
+      update: {
+        nome: nome || undefined,
+        telefone: telefone !== undefined ? telefone : undefined,
+        endereco: endereco !== undefined ? endereco : undefined,
+      },
+      create: {
+        userId,
+        nome: nome || 'Sem nome',
+        telefone: telefone || null,
+        endereco: endereco || null,
+      },
+    });
+
+    return perfilAtualizado;
   },
 
   // Alterar senha
@@ -211,25 +217,20 @@ const authService = {
       throw new Error('Senha atual e nova senha são obrigatórias');
     }
 
-    const usuario = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    const usuario = await prisma.user.findUnique({ where: { id: userId } });
+    if (!usuario) throw new Error('Usuário não encontrado');
 
-    if (!usuario) {
-      throw new Error('Usuário não encontrado');
-    }
+    const senhaValida = await bcrypt.compare(senhaAtual, usuario.senha);
+    if (!senhaValida) throw new Error('Senha atual incorreta');
 
-    if (usuario.senha !== senhaAtual) {
-      throw new Error('Senha atual incorreta');
-    }
-
+    const novaHash = await bcrypt.hash(novaSenha, 10);
     await prisma.user.update({
       where: { id: userId },
-      data: { senha: novaSenha }
+      data: { senha: novaHash },
     });
 
     return { mensagem: 'Senha alterada com sucesso' };
-  }
+  },
 };
 
 module.exports = authService;

@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -19,11 +20,6 @@ enum StatusAgendamento {
   CANCELADO
 }
 
-enum StatusPagamento {
-  PENDENTE
-  PAGO
-  CANCELADO
-}
 
 enum StatusDocumento {
   PENDENTE
@@ -69,6 +65,12 @@ model Perfil {
 
   // AVALIAÇÕES
   avaliacoes Avaliacao[]
+
+  // NOTIFICAÇÕES
+  notificacoes Notificacao[]
+
+  // AUDITORIA
+  auditoriaLogs AuditoriaLog[]
 }
 
 model Voluntario {
@@ -174,8 +176,6 @@ model Agendamento {
   local                 String?
   notas                 String?
 
-  pago                  Boolean  @default(false)
-
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -184,8 +184,6 @@ model Agendamento {
   voluntario Perfil @relation("AgendamentoVoluntario", fields: [voluntarioPerfilId], references: [id], onDelete: Cascade)
 
   servico Servico? @relation(fields: [servicoId], references: [id], onDelete: SetNull)
-
-  pagamento Pagamento?
 
   servicos AgendamentoServico[]
 
@@ -217,22 +215,6 @@ model Avaliacao {
   @@index([voluntarioId])
 }
 
-model Pagamento {
-  id                Int      @id @default(autoincrement())
-
-  agendamentoId     Int      @unique
-
-  valor             Float
-
-  metodo            String
-
-  status            StatusPagamento @default(PENDENTE)
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  agendamento Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
-}
 
 model Postagem {
   id                Int      @id @default(autoincrement())
@@ -246,6 +228,43 @@ model Postagem {
   updatedAt         DateTime @updatedAt
 
   voluntario Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+
+  @@index([voluntarioId])
+}
+
+model Notificacao {
+  id          Int             @id @default(autoincrement())
+
+  perfilId    Int
+
+  titulo      String
+  mensagem    String
+
+  tipo        TipoNotificacao
+
+  lido        Boolean         @default(false)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  perfil Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+
+  @@index([perfilId])
+}
+
+model AuditoriaLog {
+  id        Int      @id @default(autoincrement())
+
+  perfilId  Int?
+  acao      String
+  tabela    String
+  dados     Json?
+
+  createdAt DateTime @default(now())
+
+  perfil Perfil? @relation(fields: [perfilId], references: [id], onDelete: SetNull)
+
+  @@index([perfilId])
 }
 
 
