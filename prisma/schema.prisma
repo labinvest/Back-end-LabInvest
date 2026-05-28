@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -25,6 +24,12 @@ enum StatusDocumento {
   PENDENTE
   APROVADO
   REJEITADO
+}
+
+enum StatusSolicitacaoVoluntario {
+  PENDENTE
+  APROVADA
+  REJEITADA
 }
 
 enum TipoNotificacao {
@@ -58,6 +63,7 @@ model Perfil {
   updatedAt   DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   voluntario Voluntario?
+  solicitacaoVoluntario SolicitacaoVoluntario?
 
   // AGENDAMENTOS
   agendamentosCliente Agendamento[]
@@ -100,6 +106,28 @@ model Voluntario {
   @@index([categoriaId])
 }
 
+model SolicitacaoVoluntario {
+  id             Int      @id @default(autoincrement())
+  perfilId       Int      @unique
+  categoriaId    Int?
+  formacao       String?
+  bio            String?
+  experiencia    Int?
+  documentos     Json?
+  status         StatusSolicitacaoVoluntario @default(PENDENTE)
+  observacaoAdmin String?
+  aprovadoEm     DateTime?
+  aprovadoPorId  Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  perfil         Perfil   @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  categoria      Categoria? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([categoriaId])
+}
+
 model Categoria {
   id          Int      @id @default(autoincrement())
 
@@ -112,6 +140,7 @@ model Categoria {
   updatedAt   DateTime @updatedAt
 
   voluntarios Voluntario[]
+  solicitacoesVoluntario SolicitacaoVoluntario[]
 }
 
 model Disponibilidade {

@@ -110,6 +110,28 @@ class VoluntarioService {
     });
   }
 
+  async atualizarPorPerfilId(perfilId, dados) {
+    const { categoriaId, formacao, bio, experiencia, ativo } = dados;
+
+    const voluntario = await prisma.voluntario.findUnique({ where: { perfilId: parseInt(perfilId) } });
+    if (!voluntario) throw new Error('Voluntário não encontrado');
+
+    return prisma.voluntario.update({
+      where: { perfilId: parseInt(perfilId) },
+      data: {
+        categoriaId: categoriaId !== undefined ? (categoriaId ? parseInt(categoriaId) : null) : undefined,
+        formacao: formacao !== undefined ? formacao : undefined,
+        bio: bio !== undefined ? bio : undefined,
+        experiencia: experiencia !== undefined ? (experiencia ? parseInt(experiencia) : null) : undefined,
+        ativo: ativo !== undefined ? ativo : undefined,
+      },
+      include: {
+        perfil: { select: { id: true, nome: true, telefone: true } },
+        categoria: true,
+      },
+    });
+  }
+
   async deletar(id) {
     const voluntario = await prisma.voluntario.findUnique({ where: { id: parseInt(id) } });
     if (!voluntario) throw new Error('Voluntário não encontrado');

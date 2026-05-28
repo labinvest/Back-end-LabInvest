@@ -68,6 +68,10 @@ app.use('/api', notificacaoRoutes);
 const voluntarioServicoRoutes = require('./routes/voluntarioServicoRoutes');
 app.use('/api/voluntario-servico', voluntarioServicoRoutes);
 
+// Solicitação de voluntariado
+const solicitacaoVoluntarioRoutes = require('./routes/solicitacaoVoluntarioRoutes');
+app.use('/api', solicitacaoVoluntarioRoutes);
+
 // Agendamento-Serviço (associação N:N)
 const agendamentoServicoRoutes = require('./routes/agendamentoServicoRoutes');
 app.use('/api/agendamento-servico', agendamentoServicoRoutes);

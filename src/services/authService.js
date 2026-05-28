@@ -68,6 +68,15 @@ const authService = {
         },
       });
 
+      if (roleDefinida === 'VOLUNTARIO' && usuario.perfil) {
+        await tx.voluntario.create({
+          data: {
+            perfilId: usuario.perfil.id,
+            ativo: true,
+          },
+        });
+      }
+
       return usuario;
     });
 

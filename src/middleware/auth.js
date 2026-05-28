@@ -1,6 +1,7 @@
 const authService = require('../services/authService');
+const prisma = require('../lib/prisma');
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
@@ -20,8 +21,31 @@ const authMiddleware = (req, res, next) => {
 
   try {
     const decoded = authService.validarToken(token);
-    req.userId = decoded.id;
-    req.userRole = decoded.role || 'user';
+
+    const usuario = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        role: true,
+        ativo: true,
+        perfil: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!usuario || !usuario.ativo) {
+      return res.status(401).json({
+        sucesso: false,
+        erro: 'Usuário inválido ou inativo'
+      });
+    }
+
+    req.userId = usuario.id;
+    req.userRole = usuario.role;
+    req.userPerfilId = usuario.perfil?.id || null;
     next();
   } catch (error) {
     return res.status(401).json({

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const voluntarioController = require('../controllers/voluntarioController');
+const voluntarioService = require('../services/voluntarioService');
 const authMiddleware = require('../middleware/auth');
 const adminMiddleware = require('../middleware/admin');
 
@@ -41,6 +42,60 @@ router.get('/voluntarios', voluntarioController.listar);
 
 /**
  * @swagger
+ * /api/voluntarios/me:
+ *   get:
+ *     summary: Obter meu voluntário
+ *     tags: [Voluntários]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dados do voluntário autenticado
+ */
+router.get('/voluntarios/me', authMiddleware, async (req, res) => {
+	try {
+		if (!req.userPerfilId) {
+			return res.status(404).json({ sucesso: false, erro: 'Perfil não encontrado para o usuário autenticado' });
+		}
+
+		const voluntario = await voluntarioService.obterPorPerfilId(req.userPerfilId);
+		return res.json({ sucesso: true, dados: voluntario });
+	} catch (error) {
+		return res.status(404).json({ sucesso: false, erro: error.message });
+	}
+});
+
+/**
+ * @swagger
+ * /api/voluntarios/me:
+ *   post:
+ *     summary: Criar meu cadastro de voluntário
+ *     tags: [Voluntários]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               categoriaId:
+ *                 type: integer
+ *               formacao:
+ *                 type: string
+ *               bio:
+ *                 type: string
+ *               experiencia:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Voluntário criado para o usuário autenticado
+ */
+router.post('/voluntarios/me', authMiddleware, voluntarioController.criarMeuVoluntario);
+router.put('/voluntarios/me', authMiddleware, voluntarioController.atualizarMeuVoluntario);
+
+/**
+ * @swagger
  * /api/voluntarios/{id}:
  *   get:
  *     summary: Obter voluntário por ID
@@ -54,7 +109,7 @@ router.get('/voluntarios', voluntarioController.listar);
  *       200:
  *         description: Dados do voluntário
  */
-router.get('/voluntarios/:id', voluntarioController.obterPorId);
+router.get('/voluntarios/:id(\\d+)', voluntarioController.obterPorId);
 
 /**
  * @swagger
@@ -122,7 +177,7 @@ router.post('/voluntarios', authMiddleware, voluntarioController.criar);
  *       200:
  *         description: Voluntário atualizado
  */
-router.put('/voluntarios/:id', authMiddleware, voluntarioController.atualizar);
+router.put('/voluntarios/:id(\\d+)', authMiddleware, voluntarioController.atualizar);
 
 /**
  * @swagger
@@ -141,6 +196,6 @@ router.put('/voluntarios/:id', authMiddleware, voluntarioController.atualizar);
  *       200:
  *         description: Voluntário desativado
  */
-router.delete('/voluntarios/:id', adminMiddleware, voluntarioController.deletar);
+router.delete('/voluntarios/:id(\\d+)', adminMiddleware, voluntarioController.deletar);
 
 module.exports = router;

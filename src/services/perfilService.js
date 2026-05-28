@@ -6,7 +6,10 @@ class PerfilService {
       where: { userId: parseInt(userId) },
       include: {
         voluntario: {
-          include: { categoria: true },
+          include: {
+            categoria: true,
+            disponibilidades: { where: { ativo: true } },
+          },
         },
       },
     });
@@ -19,7 +22,12 @@ class PerfilService {
       where: { id: parseInt(id) },
       include: {
         user: { select: { id: true, email: true, role: true, ativo: true } },
-        voluntario: { include: { categoria: true } },
+        voluntario: {
+          include: {
+            categoria: true,
+            disponibilidades: { where: { ativo: true } },
+          },
+        },
       },
     });
     if (!perfil) throw new Error('Perfil não encontrado');
