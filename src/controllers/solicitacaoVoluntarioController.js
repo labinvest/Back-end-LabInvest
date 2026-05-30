@@ -36,10 +36,22 @@ const solicitacaoVoluntarioController = {
 
   async aprovar(req, res) {
     try {
-      const resultado = await solicitacaoVoluntarioService.aprovar(parseInt(req.params.id), req.userId);
+      const microserviceUrl = process.env.MICROSERVICO_VOLUNTARIO_URL || 'http://localhost:3001';
+      const response = await fetch(`${microserviceUrl}/api/voluntario/aprovar/${req.params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminUserId: req.userId }),
+      });
+
+      const resultado = await response.json();
+
+      if (!response.ok) {
+        return res.status(response.status).json({ sucesso: false, erro: resultado.erro || 'Erro no microserviço de aprovação' });
+      }
+
       res.status(200).json({ sucesso: true, mensagem: 'Solicitação aprovada', dados: resultado });
     } catch (error) {
-      res.status(400).json({ sucesso: false, erro: error.message });
+      res.status(500).json({ sucesso: false, erro: error.message });
     }
   },
 
