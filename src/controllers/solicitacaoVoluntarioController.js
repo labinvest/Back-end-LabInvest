@@ -36,12 +36,25 @@ const solicitacaoVoluntarioController = {
 
   async aprovar(req, res) {
     try {
-      const microserviceUrl = process.env.MICROSERVICO_VOLUNTARIO_URL || 'http://localhost:3001';
-      const response = await fetch(`${microserviceUrl}/api/voluntario/aprovar/${req.params.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminUserId: req.userId }),
-      });
+      const microserviceUrl = process.env.MICROSERVICO_VOLUNTARIO_URL;
+      if (!microserviceUrl) {
+        return res.status(500).json({ sucesso: false, erro: 'MICROSERVICO_VOLUNTARIO_URL não configurado' });
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      let response;
+      try {
+        response = await fetch(`${microserviceUrl}/api/voluntario/aprovar/${req.params.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminUserId: req.userId }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
 
       const resultado = await response.json();
 
@@ -51,7 +64,8 @@ const solicitacaoVoluntarioController = {
 
       res.status(200).json({ sucesso: true, mensagem: 'Solicitação aprovada', dados: resultado });
     } catch (error) {
-      res.status(500).json({ sucesso: false, erro: error.message });
+      const mensagem = error.name === 'AbortError' ? 'Microserviço não respondeu a tempo' : error.message;
+      res.status(500).json({ sucesso: false, erro: mensagem });
     }
   },
 
