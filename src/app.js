@@ -11,6 +11,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Arquivos estáticos (imagens de upload)
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
+
 // Health Check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', mensagem: 'Servidor está rodando', timestamp: new Date().toISOString() });
@@ -79,6 +83,18 @@ app.use('/api/agendamento-servico', agendamentoServicoRoutes);
 // Admin
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api', adminRoutes);
+
+// Upload de imagens
+const uploadRoutes = require('./routes/uploadRoutes');
+app.use('/api', uploadRoutes);
+
+// FAQs
+const faqRoutes = require('./routes/faqRoutes');
+app.use('/api', faqRoutes);
+
+// Contato
+const contatoRoutes = require('./routes/contatoRoutes');
+app.use('/api', contatoRoutes);
 
 // ============================================
 // SWAGGER

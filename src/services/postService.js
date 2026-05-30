@@ -10,7 +10,7 @@ const includeVoluntario = {
 
 class PostService {
   async criarPost(dados) {
-    const { voluntarioId, titulo, conteudo } = dados;
+    const { voluntarioId, titulo, conteudo, imagemUrl } = dados;
 
     if (!voluntarioId || !titulo || !conteudo) {
       throw new Error('voluntarioId, titulo e conteudo são obrigatórios');
@@ -21,6 +21,7 @@ class PostService {
         voluntarioId: parseInt(voluntarioId),
         titulo,
         conteudo,
+        imagemUrl: imagemUrl || null,
       },
       include: includeVoluntario,
     });
@@ -67,7 +68,7 @@ class PostService {
   }
 
   async atualizarPost(id, dados) {
-    const { titulo, conteudo } = dados;
+    const { titulo, conteudo, imagemUrl } = dados;
 
     const post = await prisma.postagem.findUnique({ where: { id: parseInt(id) } });
     if (!post) throw new Error('Postagem não encontrada');
@@ -77,6 +78,7 @@ class PostService {
       data: {
         titulo: titulo || undefined,
         conteudo: conteudo || undefined,
+        imagemUrl: imagemUrl !== undefined ? imagemUrl : undefined,
       },
       include: includeVoluntario,
     });
