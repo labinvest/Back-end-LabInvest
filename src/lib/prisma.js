@@ -2,34 +2,28 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 
-let prisma;
+const globalForPrisma = globalThis;
 
-try {
+function createClient() {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    idleTimeoutMillis: 30000,
+    max: 1,                    // 1 conexão por função serverless
+    idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 10000,
   });
 
-  pool.on('error', (err) => {
-    console.error('Erro no pool:', err.message);
-  });
-
   const adapter = new PrismaPg(pool);
-  prisma = new PrismaClient({ 
+  return new PrismaClient({
     adapter,
-    log: ['error', 'warn'],
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
+}
 
-  prisma.$connect()
-    .then(() => console.log('Conectado ao banco de dados'))
-    .catch((err) => {
-      console.error('Erro ao conectar:', err.message);
-      process.exit(1);
-    });
-} catch (error) {
-  console.error('Erro ao inicializar Prisma:', error.message);
-  process.exit(1);
+// Reutiliza a instância entre invocações na mesma sandbox (evita esgotamento de conexões)
+const prisma = globalForPrisma.prisma ?? createClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
 }
 
 module.exports = prisma;
