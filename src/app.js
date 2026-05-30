@@ -7,13 +7,13 @@ const app = express();
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Arquivos estáticos (imagens de upload)
-const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -83,10 +83,6 @@ app.use('/api/agendamento-servico', agendamentoServicoRoutes);
 // Admin
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api', adminRoutes);
-
-// Upload de imagens
-const uploadRoutes = require('./routes/uploadRoutes');
-app.use('/api', uploadRoutes);
 
 // FAQs
 const faqRoutes = require('./routes/faqRoutes');
