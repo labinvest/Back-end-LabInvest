@@ -126,9 +126,6 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// ============================================
-// TRATAMENTO GLOBAL DE ERROS
-// ============================================
 
 app.use((err, req, res, next) => {
   console.error('Erro não tratado:', err);

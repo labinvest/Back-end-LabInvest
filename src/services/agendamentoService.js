@@ -2,7 +2,7 @@ const prisma = require('../lib/prisma');
 
 const includeCompleto = {
   cliente: { select: { id: true, nome: true, telefone: true } },
-  voluntario: { select: { id: true, nome: true } },
+  voluntario: { select: { id: true, nome: true, telefone: true } },
   servico: { select: { id: true, nome: true, preco: true, duracao: true } },
   servicos: {
     include: { servico: { select: { id: true, nome: true, preco: true } } },
