@@ -471,19 +471,8 @@ npx prisma generate
 PORT=3001 npm run dev
 ```
 
----
 
-## Roadmap Futuro
 
-- [ ] Integração com pagamento real (Stripe, PagSeguro)
-- [ ] App mobile (React Native)
-- [ ] Sistema de mensagens em tempo real (WebSocket)
-- [ ] Integração com calendários (Google Calendar, Outlook)
-- [ ] Relatórios avançados e analytics
-- [ ] Machine Learning para recomendações
-- [ ] Multi-idioma (i18n)
-
----
 
 ## Autores
 
