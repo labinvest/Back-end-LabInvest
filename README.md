@@ -146,12 +146,13 @@ Avaliação
 
 ---
 
+
 ## Documentação do Projeto
 
-- **Confluence**: [Link do Confluence](#https://jose3roberto2.atlassian.net/wiki/spaces/LI/pages/590012/Proposta+Inicial+-+Lab+Invest)
-- **Jira**: [Link do Jira](#https://jose3roberto2.atlassian.net/jira/software/projects/LAB/summary)
-- **Requisitos**: [Documento de Requisitos](#)
-- **API Documentation**: `http://localhost:3000/api-docs/#/` (Swagger UI)
+- **Confluence:** [Link do Confluence](https://jose3roberto2.atlassian.net/wiki/spaces/LI/pages/590012/Proposta+Inicial+-+Lab+Invest)
+- **Jira:** [Link do Jira](https://jose3roberto2.atlassian.net/jira/software/projects/LAB/summary)
+- **Requisitos:** [Documento de Requisitos](#)
+- **API Documentation:** [Swagger UI](http://localhost:3000/api-docs/#/)
 
 ---
 
